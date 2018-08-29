@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
+import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
 import com.bumptech.glide.Glide
 import kotlinx.android.synthetic.main.activity_main.*
@@ -25,6 +26,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
+        horizontalPreviewsContainer.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Merging...", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show()
@@ -33,11 +36,16 @@ class MainActivity : AppCompatActivity() {
             Thread(Runnable
             {
                 val images = mutableListOf<Bitmap>()
-                val loadImageUrls = loadImageUrls1(serverUrl)
+                val loadImageUrls = loadImageUrls(serverUrl)
                 loadImageUrls.forEach {
                     val loadImage = loadImage(it)
                     images.add(loadImage)
                 }
+
+                handler.post {
+                    horizontalPreviewsContainer.adapter = PreviewsAdapter(images, this)
+                }
+
                 val result = mergeImages(images)
 
 //                val a = BitmapFactory.decodeResource(resources, R.drawable.a)
@@ -78,7 +86,7 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
-    private fun loadImageUrls1(serverUrl: String): List<String> {
+    private fun loadImageUrls(serverUrl: String): List<String> {
         val apiResponse = URL(serverUrl).readText()
         Log.i("ImageUrlsResponse", apiResponse)
 
