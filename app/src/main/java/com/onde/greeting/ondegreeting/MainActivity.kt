@@ -1,7 +1,6 @@
 package com.onde.greeting.ondegreeting
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -16,9 +15,10 @@ import kotlinx.android.synthetic.main.content_main.*
 import org.json.JSONException
 import org.json.JSONObject
 import java.net.URL
-import java.util.*
 
 class MainActivity : AppCompatActivity() {
+
+    private var serverUrl = "http://159.69.7.101:8080/images"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,19 +29,13 @@ class MainActivity : AppCompatActivity() {
             Snackbar.make(view, "Merging...", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show()
 
-
             val handler = Handler()
             Thread(Runnable
             {
-                val apiResponse = URL("http://159.69.7.101:8080/images").readText()
-                Log.i("####", apiResponse)
-                val parse = parse(apiResponse)
-
                 val images = mutableListOf<Bitmap>()
-                val jsonArray = parse?.getJSONArray("imageUrls")
-                for (i in 0..(jsonArray?.length()?.minus(1)!!)) {
-                    val url = jsonArray.getString(i)
-                    val loadImage = loadImage(url)
+                val loadImageUrls = loadImageUrls1(serverUrl)
+                loadImageUrls.forEach {
+                    val loadImage = loadImage(it)
                     images.add(loadImage)
                 }
                 val result = mergeImages(images)
@@ -60,17 +54,7 @@ class MainActivity : AppCompatActivity() {
         return bitmapDrawable.bitmap;
     }
 
-    fun parse(json: String): JSONObject? {
-        var jsonObject: JSONObject? = null
-        try {
-            jsonObject = JSONObject(json)
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
-        return jsonObject
-    }
-
-    fun loadImage(url: String): Bitmap {
+    private fun loadImage(url: String): Bitmap {
         return toBitmap(Glide.with(applicationContext)
                 .load(url)
                 .submit(1000, 1000)
@@ -92,5 +76,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return result
+    }
+
+    private fun loadImageUrls1(serverUrl: String): List<String> {
+        val apiResponse = URL(serverUrl).readText()
+        Log.i("ImageUrlsResponse", apiResponse)
+
+        var jsonObject: JSONObject? = null
+        try {
+            jsonObject = JSONObject(apiResponse)
+        } catch (e: JSONException) {
+            e.printStackTrace()
+        }
+
+        val images = mutableListOf<String>()
+        val jsonArray = jsonObject?.getJSONArray("imageUrls")
+        for (i in 0..(jsonArray?.length()?.minus(1)!!)) {
+            val url = jsonArray.getString(i)
+            images.add(url)
+        }
+        return images
     }
 }
