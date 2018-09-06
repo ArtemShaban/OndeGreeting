@@ -1,16 +1,15 @@
 package com.onde.greeting.ondegreeting
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.LinearLayoutManager
+import android.util.Base64
 import android.util.Log
-import com.bumptech.glide.Glide
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 import org.json.JSONException
@@ -36,10 +35,10 @@ class MainActivity : AppCompatActivity() {
             Thread(Runnable
             {
                 val images = mutableListOf<Bitmap>()
-                val loadImageUrls = loadImageUrls(serverUrl)
-                loadImageUrls.forEach {
-                    val loadImage = loadImage(it)
-                    images.add(loadImage)
+                val loadedEncodedImages = loadEncodedImages(serverUrl)
+                loadedEncodedImages.forEach {
+                    val decodedImage = decodeImage(it)
+                    images.add(decodedImage)
                 }
 
                 handler.post {
@@ -48,36 +47,26 @@ class MainActivity : AppCompatActivity() {
 
                 val result = mergeImages(images)
 
-//                val a = BitmapFactory.decodeResource(resources, R.drawable.a)
-//                val b = BitmapFactory.decodeResource(resources, R.drawable.b)
-//                val result = mergeImages(Arrays.asList(a,b))
-
                 handler.post { imageView.setImageBitmap(result) }
             }).start()
         }
     }
 
-    private fun toBitmap(drawable: Drawable): Bitmap {
-        val bitmapDrawable = drawable as BitmapDrawable
-        return bitmapDrawable.bitmap;
-    }
-
-    private fun loadImage(url: String): Bitmap {
-        return toBitmap(Glide.with(applicationContext)
-                .load(url)
-                .submit(1000, 1000)
-                .get())
+    private fun decodeImage(base64: String): Bitmap {
+        val imageByteArray = Base64.decode(base64, Base64.DEFAULT)
+        return BitmapFactory.decodeByteArray(imageByteArray, 0, imageByteArray.size)
     }
 
     private fun mergeImages(images: List<Bitmap>): Bitmap {
-        val sideSize = Math.min(images[0].width, images[0].height)
-        val result = Bitmap.createBitmap(sideSize, sideSize, images[0].config)
-        for (i in 0 until sideSize) {
-            for (j in 0 until sideSize) {
+        val imageWidth = images[0].width
+        val imageHeight = images[0].height
+        val result = Bitmap.createBitmap(imageWidth, imageHeight, images[0].config)
+        for (y in 0 until imageHeight) {
+            for (x in 0 until imageWidth) {
                 for (bitmap in images) {
-                    val pixel = bitmap.getPixel(i, j)
-                    if (pixel != Color.WHITE) {
-                        result.setPixel(i, j, pixel)
+                    val pixel = bitmap.getPixel(x, y)
+                    if (pixel != Color.TRANSPARENT) {
+                        result.setPixel(x, y, pixel)
                         break
                     }
                 }
@@ -86,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
-    private fun loadImageUrls(serverUrl: String): List<String> {
+    private fun loadEncodedImages(serverUrl: String): List<String> {
         val apiResponse = URL(serverUrl).readText()
         Log.i("ImageUrlsResponse", apiResponse)
 
@@ -98,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val images = mutableListOf<String>()
-        val jsonArray = jsonObject?.getJSONArray("imageUrls")
+        val jsonArray = jsonObject?.getJSONArray("pngImagesInBase64")
         for (i in 0..(jsonArray?.length()?.minus(1)!!)) {
             val url = jsonArray.getString(i)
             images.add(url)
